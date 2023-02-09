@@ -67,12 +67,10 @@ class RainFallRecord(object):
         return f'The rainfall in {self.name} for month {month} in {year} is {rainfall}mm'
 
     def insert_quarter(self, quarter, year, rain_list):
-        quarter_df = pd.DataFrame()
         quarters = {'winter': 1,
                     'spring': 4,
                     'summer': 7,
-                    'autumn': 10,
-                    }
+                    'autumn': 10}
         month = quarters[quarter]
 
         index = self.df.index[(self.df["year"] == year) & (self.df["month"] == month)].tolist()
@@ -81,8 +79,10 @@ class RainFallRecord(object):
             for i in range(3):
                 self.df.loc[(index+i), "rain"] = rain_list[i]
         else:
-            print("index not found")
-            self.df = pd.concat([self.df, quarter_df], ignore_index=True)
+            for i in range(3):
+                new_row = pd.DataFrame({'year': [year], 'month': [month], 'rain': [rain_list[i]]})
+                self.df = pd.concat([self.df, new_row], ignore_index=True)
+                month = month + 1
 
         rain_string = ('mm, '.join(map(str, rain_list)))
         return f'Added the rainfall values {rain_string}mm in {self.name} for the {quarter} quarter in {year}'
@@ -97,7 +97,7 @@ def main():
     print(city1.first_rows())
     print(city1.insert(1, 1941, 97.1))
     print(city1.first_rows(6))
-    print(city1.insert_quarter('winter', 1941, [19.2, 34.6, 12.5]))
+    print(city1.insert_quarter('spring', 1941, [19.2, 34.6, 12.5]))
     print(city1.first_rows(9))
 
 
