@@ -3,9 +3,9 @@ import pandas as pd
 
 
 class RainFallRecord:
-    def __init__(self, datapath):
+    def __init__(self, data_path):
         try:
-            self.df = pd.read_csv(datapath)
+            self.df = pd.read_csv(data_path)
             self.df = self.df.T.reset_index().T.reset_index(drop=True)
             self.df.drop(self.df.columns[[2, 3, 4, 6]], axis='columns', inplace=True)
             self.df.dropna(how='any', inplace=True)
@@ -15,14 +15,14 @@ class RainFallRecord:
             self.df = self.df[pd.to_numeric(self.df['year'], errors='coerce').notnull()]
             self.df.reset_index(drop=True, inplace=True)
 
-            self.name = datapath[:-4]
+            self.name = data_path[:-4]
 
             self.year = self.df['year'] = self.df['year'].astype(int)
             self.month = self.df['month'] = self.df['month'].astype(int)
             self.rain = self.df['rain'] = self.df['rain'].astype(float)
 
         except FileNotFoundError:
-            print(f'File: {datapath} does not exist')
+            print(f'File: {data_path} does not exist')
 
     def average(self, start_month, end_month, year):
         selection_df = self.df.loc[(self.year == year) &
