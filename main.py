@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import pandas as pd
 
@@ -25,24 +26,50 @@ class RainFallRecord:
             print(f'File: {data_path} does not exist')
 
     def average(self, start_month, end_month, year):
-        selection_df = self.df.loc[(self.year == year) &
-                                   (self.month >= start_month) &
-                                   (self.month <= end_month)]
-        rain_list = list(map(float, selection_df['rain'].values.tolist()))
-        average = np.average(rain_list)
+        try:
+            selection_df = self.df.loc[(self.year == year) &
+                                       (self.month >= start_month) &
+                                       (self.month <= end_month)]
+            rain_list = list(map(float, selection_df['rain'].values.tolist()))
+            average = np.average(rain_list)
+            return f'The average rainfall in {self.name} in {year} between months {start_month} and {end_month}: {average}'
+        except Exception as e:
+            raise Exception(f"Input error: {e}")
 
-        return f'The average rainfall in {self.name} in {year} between months {start_month} and {end_month}: {average}'
+
 
     def rainfall(self, month, year):
-        rainfall = self.df.loc[(self.month == month) & (self.year == year), 'rain']
+        try:
+            rainfall = self.df.loc[(self.month == month) & (self.year == year), 'rain']
+            if rainfall.empty:
+                return f'Error: No rainfall data found for month {month} in year {year} in {self.name}'
 
-        return f'The rainfall in {self.name} for month {month} in {year} is {rainfall.values[0]}mm'
+            return f'The rainfall in {self.name} for month {month} in {year} is {rainfall.values[0]}mm'
+        except Exception as e:
+            raise Exception(f"Input error: {e}")
+
 
     def delete(self, month, year):
-        self.df.loc[(self.year == year) & (self.month == month), 'rain'] = np.nan
+        if not isinstance(month, int) or month < 1 or month > 12:
+            raise ValueError("Invalid value for month. It should be an integer between 1 and 12.")
+        if not isinstance(year, int) or year < 0:
+            raise ValueError("Invalid value for year. It should be a positive integer.")
+
+        mask = (self.df['year'] == year) & (self.df['month'] == month)
+        if not mask.any():
+            raise ValueError(f"No data found for month {month} and year {year} in {self.name}.")
+
+        self.df.loc[mask, 'rain'] = np.nan
         return f'The rainfall value in {self.name} for month {month} in {year} has been deleted'
 
     def insert(self, month, year, rainfall):
+        if not isinstance(month, int) or month < 1 or month > 12:
+            raise ValueError("Invalid value for month. It should be an integer between 1 and 12.")
+        if not isinstance(year, int) or year < 0:
+            raise ValueError("Invalid value for year. It should be a positive integer.")
+        if not isinstance(rainfall, (int, float)) or rainfall < 0:
+            raise ValueError("Invalid value for rainfall. It should be a non-negative number.")
+
         index = self.df.index[(self.df["year"] == year) & (self.df["month"] == month)].tolist()
         if index:
             self.df.loc[index[0], "rain"] = rainfall
@@ -53,6 +80,16 @@ class RainFallRecord:
         return f'The rainfall in {self.name} for month {month} in {year} is {rainfall}mm'
 
     def insert_quarter(self, quarter, year, rain_list):
+        if quarter not in ['winter', 'spring', 'summer', 'autumn']:
+            raise ValueError("Invalid value for quarter. It should be one of 'winter', 'spring', 'summer', 'autumn'.")
+        if not isinstance(year, int) or year < 0:
+            raise ValueError("Invalid value for year. It should be a positive integer.")
+        if not isinstance(rain_list, list) or len(rain_list) != 3:
+            raise ValueError("Invalid value for rain_list. It should be a list of 3 non-negative numbers.")
+        for r in rain_list:
+            if not isinstance(r, (int, float)) or r < 0:
+                raise ValueError("Invalid value for rainfall. It should be a non-negative number.")
+
         quarters = {'winter': 1,
                     'spring': 4,
                     'summer': 7,
@@ -76,21 +113,41 @@ class RainFallRecord:
 
 class Archive:
     def __init__(self, file_name):
+        if not file_name.endswith(".csv"):
+            raise ValueError("Invalid file name. It should be a .csv file.")
+        if not os.path.exists(file_name):
+            raise FileNotFoundError(f"File '{file_name}' does not exist.")
+
         self.file_name = file_name
         self.archive_name = f'{self.file_name[:-4]}_archive.csv'
+        self.record = RainFallRecord(self.file_name)
 
-    def insert(self, record):
-        with open(self.archive_name, 'a') as f:
-            record.df.to_csv(f, mode='a', header=not f.tell(), index=False, lineterminator='\n')
+    def insert(self):
+        try:
+            with open(self.archive_name, 'a') as f:
+                self.record.df.to_csv(f, mode='a', header=not f.tell(), index=False, lineterminator='\n')
+        except FileNotFoundError:
+            raise FileNotFoundError(f"File '{self.archive_name}' does not exist.")
+        except Exception as e:
+            raise Exception(f"An error occurred while writing to the file: {e}")
 
-    def delete(self, record):
-        archive_df = pd.read_csv(self.archive_name)
-        merged = archive_df.merge(record.df, on='year', how='inner')
-        archive_df = archive_df[~archive_df['year'].isin(merged['year'])]
-        archive_df.to_csv(self.archive_name, index=False, lineterminator='\n')
+    def delete(self):
+        try:
+            archive_df = pd.read_csv(self.archive_name)
+            merged = archive_df.merge(self.record.df, on='year', how='inner')
+            archive_df = archive_df[~archive_df['year'].isin(merged['year'])]
+            archive_df.to_csv(self.archive_name, index=False, lineterminator='\n')
+        except FileNotFoundError:
+            raise FileNotFoundError(f"File '{self.archive_name}' does not exist.")
+        except Exception as e:
+            raise Exception(f"An error occurred while reading or writing to the file: {e}")
 
     def sma(self, city, start_year, end_year, k):
-        df = pd.read_csv(city)
+        try:
+            df = pd.read_csv(city)
+        except FileNotFoundError:
+            return f'Error: The file {city} does not exist'
+
         df = df[(df['year'] >= start_year) & (df['year'] <= end_year)]
         df['SMA'] = df['rain'].rolling(k).mean()
         df = df[df['SMA'].notnull()]
@@ -130,9 +187,9 @@ class Driver:
 
         for i in range(len(self.city_list)):
             rain_archive = Archive(self.city_list[i])
-            rain_archive.insert(self.city_record_list[i])
-            rain_archive.delete(self.city_record_list[i])
-            rain_archive.insert(self.city_record_list[i])
+            rain_archive.insert()
+            rain_archive.delete()
+            rain_archive.insert()
             return_list.append(rain_archive.sma(self.archive_list[i], 1950, 1951, 6))
 
         return_string = ('\n'.join(map(str, return_list)))
