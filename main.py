@@ -5,6 +5,12 @@ import pandas as pd
 
 class RainFallRecord:
     def __init__(self, data_path):
+        # Takes a file path as an argument and loads the data into a pandas DataFrame.
+        # The data is cleaned up and transformed to a more usable format,
+        # reaming columns for the year, month, and rainfall amount.
+        # The file name without the extension is stored as the name attribute.
+        # The year and month columns are cast to integers, and the rain column is cast to a float.
+
         try:
             self.df = pd.read_csv(data_path)
             self.df = self.df.T.reset_index().T.reset_index(drop=True)
@@ -25,6 +31,7 @@ class RainFallRecord:
         except FileNotFoundError:
             print(f'File: {data_path} does not exist')
 
+    # returns the average rainfall in a given range of months in a specified year.
     def average(self, start_month, end_month, year):
         try:
             selection_df = self.df.loc[(self.year == year) &
@@ -36,8 +43,7 @@ class RainFallRecord:
         except Exception as e:
             raise Exception(f"Input error: {e}")
 
-
-
+    #  returns the rainfall amount for a specific month and year.
     def rainfall(self, month, year):
         try:
             rainfall = self.df.loc[(self.month == month) & (self.year == year), 'rain']
@@ -48,7 +54,7 @@ class RainFallRecord:
         except Exception as e:
             raise Exception(f"Input error: {e}")
 
-
+    # deletes the rainfall amount for a specific month and year.
     def delete(self, month, year):
         if not isinstance(month, int) or month < 1 or month > 12:
             raise ValueError("Invalid value for month. It should be an integer between 1 and 12.")
@@ -62,6 +68,7 @@ class RainFallRecord:
         self.df.loc[mask, 'rain'] = np.nan
         return f'The rainfall value in {self.name} for month {month} in {year} has been deleted'
 
+    #  inserts or updates the rainfall amount for a specific month and year.
     def insert(self, month, year, rainfall):
         if not isinstance(month, int) or month < 1 or month > 12:
             raise ValueError("Invalid value for month. It should be an integer between 1 and 12.")
@@ -79,6 +86,7 @@ class RainFallRecord:
 
         return f'The rainfall in {self.name} for month {month} in {year} is {rainfall}mm'
 
+    #  inserts or updates the rainfall amounts for a whole quarter (three months) in a specified year.
     def insert_quarter(self, quarter, year, rain_list):
         if quarter not in ['winter', 'spring', 'summer', 'autumn']:
             raise ValueError("Invalid value for quarter. It should be one of 'winter', 'spring', 'summer', 'autumn'.")
@@ -111,7 +119,10 @@ class RainFallRecord:
         return f'Added the rainfall values {rain_string}mm in {self.name} for the {quarter} quarter in {year}'
 
 
+# task3
 class Archive:
+    # initializes the file name, creates the archive file name,
+    # and creates an instance of the RainFallRecord class using the file name.
     def __init__(self, file_name):
         if not file_name.endswith(".csv"):
             raise ValueError("Invalid file name. It should be a .csv file.")
@@ -122,6 +133,7 @@ class Archive:
         self.archive_name = f'{self.file_name[:-4]}_archive.csv'
         self.record = RainFallRecord(self.file_name)
 
+    # writes or appending the data stored in the record's data frame to the archive file
     def insert(self):
         try:
             with open(self.archive_name, 'a') as f:
@@ -131,6 +143,7 @@ class Archive:
         except Exception as e:
             raise Exception(f"An error occurred while writing to the file: {e}")
 
+    # deletes the data in the archive file that matches the record's data frame
     def delete(self):
         try:
             archive_df = pd.read_csv(self.archive_name)
@@ -142,6 +155,7 @@ class Archive:
         except Exception as e:
             raise Exception(f"An error occurred while reading or writing to the file: {e}")
 
+    # calculates the simple moving average of rainfall for a city between a start and end year, for a given window size
     def sma(self, city, start_year, end_year, k):
         try:
             df = pd.read_csv(city)
@@ -156,12 +170,14 @@ class Archive:
 
 
 class Driver:
-    def __init__(self, city1, city2, city3):
-        self.city_list = [city1, city2, city3]
-        self.archive_list = [f'{city1[:-4]}_archive.csv',
-                             f'{city2[:-4]}_archive.csv',
-                             f'{city3[:-4]}_archive.csv']
-        self.city_record_list = [RainFallRecord(city1), RainFallRecord(city2), RainFallRecord(city3)]
+    def __init__(self, city_list):
+        self.city_list = city_list
+        self.city_record_list = []
+        self.archive_list = []
+
+        for i in city_list:
+            self.archive_list.append(f'{i[:-4]}_archive.csv')
+            self.city_record_list.append(RainFallRecord(i))
 
     def task1(self):
         average_list = []
@@ -201,9 +217,11 @@ def main():
     city2 = 'Armagh.csv'
     city3 = 'Oxford.csv'
 
-    print(Driver(city1, city2, city3).task1())
-    print(Driver(city1, city2, city3).task2())
-    print(Driver(city1, city2, city3).task3())
+    city_list = [city1, city2, city3]
+
+    print(Driver(city_list).task1())
+    print(Driver(city_list).task2())
+    print(Driver(city_list).task3())
 
 
 if __name__ == '__main__':
